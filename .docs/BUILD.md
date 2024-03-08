@@ -1,6 +1,6 @@
 # Build Environment Setup Guide
 
-With the help of examples, this section guides you through the process of initializing a build environment for C++ projects with or without using the Conan package manager, focusing on setting up for different build types such as Debug, Release, and RelWithDebInfo.
+With the help of examples, this section guides you through the process of initializing a build environment for WinCC OA projects with or without using the Conan package manager, focusing on setting up for different build types such as Debug, Release, and RelWithDebInfo.
 
 ## Conan
 
@@ -34,8 +34,12 @@ class MyConanRecipe(ConanFile):
 
 ```cmd
 rem change to the directory of the CMakeLists.txt
-cd demo
+cd demoDrv
 
+rem define OA version to change it only once
+set OAVERS=3.19
+rem set the API_ROOT to the location of the WinCC OA API
+set API_ROOT=C:/Siemens/Automation/WinCC_OA/%OAVERS%/api
 rem set the build directory
 set BUILDDIR=build/make
 
@@ -47,18 +51,21 @@ rem detect the conan profile, only need to run once
 conan profile detect
 
 rem install the dependencies using conan for the different build types
-conan install . --output-folder=%BUILDDIR% --profile ../config/conan/win_msvc2022vc143.txt --build=missing -s build_type=Debug
-conan install . --output-folder=%BUILDDIR% --profile ../config/conan/win_msvc2022vc143.txt --build=missing -s build_type=Release
-conan install . --output-folder=%BUILDDIR% --profile ../config/conan/win_msvc2022vc143.txt --build=missing -s build_type=RelWithDebInfo
+conan install . --output-folder=%BUILDDIR% --profile ../config/conan/win_%OAVERS%.txt --build=missing -s build_type=Debug
+conan install . --output-folder=%BUILDDIR% --profile ../config/conan/win_%OAVERS%.txt --build=missing -s build_type=Release
+conan install . --output-folder=%BUILDDIR% --profile ../config/conan/win_%OAVERS%.txt --build=missing -s build_type=RelWithDebInfo
 
 rem create Visual Studio solution and open it in Visual Studio
 cmake --preset conan-default
 start %BUILDDIR%/demoDrv.sln
 
-rem build/install/package/test from the command line
+rem build/install/package from the command line
 cmake --build %BUILDDIR% --config RelWithDebInfo
 cmake --install %BUILDDIR% --config RelWithDebInfo
 cpack -V --config %BUILDDIR%/CPackConfig.cmake -C RelWithDebInfo
+
+rem add the WinCC OA bin directory to the PATH and run the tests
+set PATH=C:/Siemens/Automation/WinCC_OA/%OAVERS%/bin;%PATH%
 ctest -V --test-dir %BUILDDIR% --output-on-failure -C RelWithDebInfo
 ```
 
@@ -66,8 +73,12 @@ ctest -V --test-dir %BUILDDIR% --output-on-failure -C RelWithDebInfo
 
 ```cmd
 rem change to the directory of the CMakeLists.txt
-cd demo
+cd demoDrv
 
+rem define OA version to change it only once
+set OAVERS=3.19
+rem set the API_ROOT to the location of the WinCC OA API
+set API_ROOT=C:/Siemens/Automation/WinCC_OA/%OAVERS%/api
 rem set the build directory
 set BUILDDIR=build/make
 
@@ -79,12 +90,14 @@ rem detect the conan profile, only need to run once
 conan profile detect
 
 rem install the dependencies using conan for RelWithDebInfo
-conan install . --output-folder=%BUILDDIR% --build=missing --profile=../config/conan/win_msvc2022vc143.txt -s build_type=RelWithDebInfo -c tools.cmake.cmaketoolchain:generator=Ninja
+conan install . --output-folder=%BUILDDIR% --build=missing --profile=../config/conan/win_%OAVERS%.txt -s build_type=RelWithDebInfo -c tools.cmake.cmaketoolchain:generator=Ninja
 
 rem Conan creates the correct VCvars script, init with this
 call "%BUILDDIR%/conanvcvars.bat"
 
-rem open the source so in Visual Studio Code and use the generated cmake-presets there
+rem add the WinCC OA bin directory to the PATH and open the source so everything
+rem else can be done in Visual Studio Code using the generated cmake-presets
+set PATH=C:/Siemens/Automation/WinCC_OA/%OAVERS%/bin;%PATH%
 code .
 
 rem alternative do everything on the commandline
@@ -101,8 +114,10 @@ ctest -V --test-dir %BUILDDIR% --output-on-failure
 
 ```bash
 # change to the directory of the CMakeLists.txt
-cd demo
+cd demoDrv
 
+# set the API_ROOT to the location of the WinCC OA API
+export API_ROOT=/opt/WinCC_OA/3.19/api/
 # set the build directory
 export BUILDDIR=build/make
 
