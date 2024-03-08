@@ -35,3 +35,5 @@
 build/
 
 CMakeUserPresets.json
+
+.devcontainer/*.deb
