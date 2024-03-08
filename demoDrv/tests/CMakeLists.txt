@@ -1,5 +1,5 @@
 set(SOURCES
-test_calc.cpp
+demoTrans.cxx
 )
 
 add_gtest_with_xml(${TARGET} ${TARGET}Lib ${SOURCES})

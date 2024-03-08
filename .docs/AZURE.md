@@ -23,29 +23,31 @@ Customize the build parameters in `azure-pipeline.yml` to meet the needs of your
 
 ## Accessing private resources
 
-In `build/build-template.yml' look for something like this:
-```yaml
-        ${{ if eq(parameters.agentType, 'containerized') }}:
-          pool:
-            vmImage: 'ubuntu-latest'
-          container:
-            image: $(container_image)
-            options: -v /etc/localtime:/etc/localtime:ro
-            # endpoint: Dockerhub # If you need access to a private container registry
-        ${{ else }}:
-          pool:
-            vmImage: $(azure_vmImage)
-```
+Below code changes need to done in `build/build-template.yml`.
+
+### Windows
+
+The credentials to download the required files of the WinCC OA API for Windows need to be stored as secrets in a Pipeline-library.
+
+- In Pipelines, navigate to Library and select *+ Variable group*
+- Set the group name to `WinCCOA_Download`
+- Add `WINCCOA_USER` and `WINCCOA_PASSWORD` with its values as secrets
+- If you want to use another group name, look for the follwing line and change it accordingly:
+  ```yaml
+                - group: WinCCOA_Download # credentials only required for native agents
+  ```
+
+This is just a sample implementation, replace it with something more suitable for your environment.
 
 ### Using a Private Docker Registry
 
 - Add a *Docker Registry* service connection where you can specify your credentials.
-- Specify the new service connection in the container settings with the key `endpoint`, for example:
+- Set the name of the new service connection in the container settings with the key `endpoint`, if you use another name than `Dockerhub`, for example:
     ```yaml
             container:
                 image: $(container_image)
                 options: -v /etc/localtime:/etc/localtime:ro
-                endpoint: myDockerhubAccount # If you need access to a private container registry
+                endpoint: myDockerhubAccount
     ```
 
 ### Using self-hosted agents
@@ -57,6 +59,7 @@ Instead of specifying the `vmImage', specify the pool directly by name, e.g:
           container:
             image: $(container_image)
             options: -v /etc/localtime:/etc/localtime:ro
+            endpoint: myDockerhubAccount
         ${{ else }}:
           pool: 'Win_vs2022_pool'
 ```

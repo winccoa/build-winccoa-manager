@@ -48,9 +48,9 @@ jobs:
     container:
       image: ${{ matrix.config.container_image }}
       options: --user root
-      # credentials:
-      #   username: ${{ secrets.DOCKERHUB_USER}}
-      #   password: ${{ secrets.DOCKERHUB_PASSWORD}}
+      credentials:
+        username: ${{ secrets.DOCKERHUB_USER}}
+        password: ${{ secrets.DOCKERHUB_PASSWORD}}
     env:
       BUILDDIR: build/make
       INSTALLDIR: build/install
@@ -60,9 +60,19 @@ jobs:
       - uses: actions/checkout@v4
 
       - run: |
+          # set API_ROOT depending on the OS
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            echo "API_ROOT=/opt/WinCC_OA/${{matrix.config.version}}/api" >> $GITHUB_ENV
+          else
+            echo 'API_ROOT=${{ runner.temp }}\${{matrix.config.platform}}_${{matrix.config.version}}\api' >> $GITHUB_ENV
+          fi
           # for Conan a date is used to store the cache
           if [ "${{matrix.config.conan}}" == "true" ]; then
             echo "NOW=$(date +'%Y-%m-%dT-%H%M%S')" >> $GITHUB_OUTPUT
+          fi
+          # Need a hash of the used URLs to cache the extracted WinCCOA packages on Windows
+          if [[ -n "${{ matrix.config.msi_download_server }}" && -n "${{ matrix.config.msi_download_info }}" ]]; then
+            echo "urlhash=$(echo '${{ matrix.config.msi_download_server }}-${{ matrix.config.msi_download_info }}' | md5sum | awk '{print $1}')" >> $GITHUB_OUTPUT
           fi
         shell: bash
         id: initvars
@@ -79,6 +89,56 @@ jobs:
         id: conan
         uses: turtlebrowser/get-conan@main
         if: runner.os == 'Windows' && matrix.config.conan
+
+      - name: Restore cached WinCCOA packages
+        id: cache-winccoa-packages-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{runner.temp}}/${{matrix.config.platform}}_${{matrix.config.version}}
+          key: ${{matrix.config.platform}}-winccoa-${{matrix.config.version}}-${{ steps.initvars.outputs.urlhash }}
+          # key: ${{matrix.config.platform}}-winccoa-${{matrix.config.version}}-${{ hashFiles('**/build.yml') }}-${{ steps.initvars.outputs.urlhash }}
+        if: matrix.config.msi_download_server && matrix.config.msi_download_info
+
+      - run: |
+          msiextract() {
+            msiexec //a $1 //qn TARGETDIR='${{runner.temp}}\extract'
+          }
+          
+          # if ever someone wants to download the files from onedrive
+          downloadOnedrive() {
+            curl -O -J -sL 'https://api.onedrive.com/v1.0/shares/u!'$(echo -n "$1" | base64 -w0 | tr -d '=' | tr '/+' '_-')/driveItem/content -w "%{filename_effective}"
+          }
+
+          downloadWithCredentials() {
+            curl -u ${{ secrets.WINCCOA_USER}}:${{ secrets.WINCCOA_PASSWORD}} -O -J -sL $1
+          }
+
+          downloadWithCredentials '${{ matrix.config.msi_download_server }}/${{ matrix.config.msi_download_info }}/Base.msi'
+          downloadWithCredentials '${{ matrix.config.msi_download_server }}/${{ matrix.config.msi_download_info }}/APIcpp.msi'
+          downloadWithCredentials '${{ matrix.config.msi_download_server }}/${{ matrix.config.msi_download_info }}/NODEPLOY_CODEMETER.zip'
+
+          msiextract Base.msi
+          msiextract APIcpp.msi
+
+          mkdir -p "${{matrix.config.platform}}_${{matrix.config.version}}"
+
+          mv "extract/PFiles64/InstallationDirectory/"* "${{matrix.config.platform}}_${{matrix.config.version}}/"
+
+          unzip NODEPLOY_CODEMETER.zip -d "${{matrix.config.platform}}_${{matrix.config.version}}/bin"
+
+          ls -R "${{matrix.config.platform}}_${{matrix.config.version}}"
+        working-directory: ${{runner.temp}}
+        name: 'Extract WinCCOA packages'
+        shell: bash
+        if: steps.cache-winccoa-packages-restore.outputs.cache-hit != 'true' && runner.os == 'Windows' && matrix.config.msi_download_server && matrix.config.msi_download_info
+
+      - name: Cache WinCCOA packages
+        id: cache-winccoa-packages-save
+        uses: actions/cache/save@v4
+        with:
+          path: ${{runner.temp}}/${{matrix.config.platform}}_${{matrix.config.version}}
+          key: ${{ steps.cache-winccoa-packages-restore.outputs.cache-primary-key }}
+        if: steps.cache-winccoa-packages-restore.outputs.cache-hit != 'true' && matrix.config.msi_download_server && matrix.config.msi_download_info
 
       - name: Restore cached Conan packages
         id: cache-conan-packages-restore

@@ -39,13 +39,21 @@ stages:
           - name: DEPLOYDIR
             value: "$(Build.BinariesDirectory)/build/deploy"
 
+          - ${{ if eq(parameters.agentType, 'containerized') }}:
+              - name: API_ROOT
+                value: /opt/WinCC_OA/$(version)/api
+          - ${{ else }}:
+              - group: WinCCOA_Download # credentials only required for native agents
+              - name: API_ROOT
+                value: $(Agent.TempDirectory)/$(platform)_$(version)/api
+
         ${{ if eq(parameters.agentType, 'containerized') }}:
           pool:
             vmImage: 'ubuntu-latest'
           container:
             image: $(container_image)
             options: -v /etc/localtime:/etc/localtime:ro
-            # endpoint: Dockerhub # If you need access to a private container registry
+            endpoint: Dockerhub
         ${{ else }}:
           pool:
             vmImage: $(azure_vmImage)
@@ -54,6 +62,40 @@ stages:
           - checkout: self
             clean: true
             lfs: true
+
+          - ${{ if eq(parameters.agentType, 'native') }}:
+              - bash: |
+                  msiextract() {
+                    msiexec //a $1 //qn TARGETDIR='$(Agent.TempDirectory)\extract'
+                  }
+                  
+                  # if ever someone wants to download the files from onedrive
+                  downloadOnedrive() {
+                    curl -O -J -sL 'https://api.onedrive.com/v1.0/shares/u!'$(echo -n "$1" | base64 -w0 | tr -d '=' | tr '/+' '_-')/driveItem/content -w "%{filename_effective}"
+                  }
+
+                  downloadWithCredentials() {
+                    curl -u $(WINCCOA_USER):$(WINCCOA_PASSWORD) -O -J -sL $1
+                  }
+
+                  mkdir download && cd download
+                  downloadWithCredentials '$(msi_download_server)/$(msi_download_info)/Base.msi'
+                  downloadWithCredentials '$(msi_download_server)/$(msi_download_info)/APIcpp.msi'
+                  downloadWithCredentials '$(msi_download_server)/$(msi_download_info)/NODEPLOY_CODEMETER.zip'
+                  cd ..
+
+                  msiextract 'download\Base.msi'
+                  msiextract 'download\APIcpp.msi'
+                  mkdir -p "$(platform)_$(version)"
+
+                  mv "extract/PFiles64/InstallationDirectory/"* "$(platform)_$(version)/"
+
+                  unzip 'download\NODEPLOY_CODEMETER.zip' -d "$(platform)_$(version)/bin"
+
+                  ls -R "$(platform)_$(version)"
+                  
+                workingDirectory: "$(Agent.TempDirectory)"
+                displayName: Extract WinCCOA MSI packages
 
           - ${{ if eq(parameters.agentType, 'native') }}:
               - bash: |

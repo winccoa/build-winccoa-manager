@@ -1,16 +1,18 @@
-# C++ Multi Builder
+# WinCC OA C++ API Manager Builder
 
-This GitHub repository provides an out-of-the-box GitHub Action and [Azure Pipeline](.docs/AZURE.md) for building C++ projects.
-It is designed to lower the barrier to entry for developers, allowing them to easily build, unit test, and package C++ projects for multiple OS combinations using a single C++ source code.
+This GitHub repository provides an out-of-the-box GitHub Action and [Azure Pipeline](.docs/AZURE.md) for building C++ API managers for WinCC OA.
+It is designed to lower the barrier to entry for developers, allowing them to easily build, unit test, and package WinCC OA API managers for multiple OS and WinCC OA version combinations using a single C++ source code.
+
+It is based on the original work from here: https://github.com/andygruber/cpp-multi-builder
 
 ## Features
 
 - **Ease of use**: Set up with minimal configuration required.
-- **Multiple OS Support**: Build your C++ projects for different combinations of operating systems.
+- **Multiple OS and WinCC OA Version Support**: Build your API managers for different combinations of operating systems and WinCC OA versions.
 - **C++ Package Manager Support**: Conan package manager is supported out of the box for managing C++ dependencies.
-- **Automated testing and packaging**: Includes support for unit testing and packaging your projects.
+- **Automated testing and packaging**: Includes support for unit testing and packaging your API managers.
 - **Debug files available**: PDB and unstripped files are kept alongside build artifacts.
-- **Caching support**: Conan packages are automatically cached in GitHub actions.
+- **Caching support**: Conan packages and extracted Windows API files are automatically cached in GitHub actions.
 - **Multiple CI Platforms**: Use GitHub Actions or Azure Pipelines. Also works on-premises or with self-hosted runners/agents.
 
 ## Getting Started
@@ -20,25 +22,49 @@ It is designed to lower the barrier to entry for developers, allowing them to ea
 - A GitHub account
 - Basic C++ and CMake skills
 - Familiarity with GitHub actions
+- Access to WinCC OA API docker images (Linux) and WinCC OA MSI packages (Windows)
 
 ### Fork the repository
 
-To get started, fork this repository into your own GitHub account. This will be the home for your C++ CMake project.
+To get started, fork this repository into your own GitHub account. This will be the home for your C++ CMake project for building WinCC OA API managers.
 
 ### Initial general configuration
 
 The default configuration is stored in `pipeline/createMatrix/mergekeys.yml`.
 
-This file stores the Docker images used and various other settings.
+This file stores, among other things, the name of the Docker images and the locations for the WinCC OA MSI packages.
+Since these prerequisites are not publicly available, they must be manually created and defined here.
 
 #### Linux
 
-Linux builds rely on Docker images.
+Linux builds are based on Docker images.
+The API images generated from the public repo [https://github.com/andygruber/build-winccoa-docker-image](https://github.com/andygruber/build-winccoa-docker-image) are compatible.
+For example:
+```
+  container_image: 'agruberetm/winccoa:v3.19.10-api'
+```
 
-These docker images must have the following tools installed:
-- compilers
-- ninja
-- conan
+Also provide the following credentials in the GitHub secrets:
+- DOCKERHUB_USER
+- DOCKERHUB_PASSWORD
+
+#### Windows
+
+Windows is much more complicated.
+This is just a sample implementation, replace it with something more suitable for your environment.
+
+- On a machine with WinCC OA >= 3.19 installed, go to `C:\ProgramData\Package Cache` and search for `Base.msi` and `APIcpp.msi`.
+- Make these files available on a secure server where the path is a combination of `msi_download_server` and `msi_download_info`, see below.
+- In addition take `C:\Windows\System32\WibuCm64.dll`, zip it to `NODEPLOY_CODEMETER.zip` and provide it as OneDrive link as well.
+- For example:
+    ```
+    msi_download_server: "https://www.for.example/artifactory"
+    msi_download_info: "winccoa/3.19.10"
+    ```
+
+Also provide the following credentials in the GitHub secrets:
+- WINCCOA_USER
+- WINCCOA_PASSWORD
 
 ### Adding your C++ CMake project
 
@@ -48,20 +74,20 @@ This is where you'll define your project and its dependencies.
 ### Configuration
 
 Create a `build-config.yml` file in your repository along with the `CMakeLists.txt` file.
-This file specifies the build configurations for different operating systems.
-Here's an example based on the demo provided in the `demo` directory:
+This file specifies the build configurations for different operating systems and WinCC OA versions.
+Here's an example based on the demo-driver provided in the `demoDrv` directory:
 
 ```yaml
-demo:
+demoDriver:
   configuration:
-    win_msvc2022vc142_relwithdebinfo:
-      <<: *_win_msvc2022vc142_relwithdebinfo
-    win_msvc2022vc143_relwithdebinfo:
-      <<: *_win_msvc2022vc143_relwithdebinfo
-    debian_bookworm_relwithdebinfo:
-      <<: *_debian_bookworm_relwithdebinfo
-    debian_bullseye_relwithdebinfo:
-      <<: *_debian_bullseye_relwithdebinfo
+    win_3_19_relwithdebinfo:
+      <<: *_win_3_19_relwithdebinfo
+    win_3_20_relwithdebinfo:
+      <<: *_win_3_20_relwithdebinfo
+    debian_3_20_relwithdebinfo:
+      <<: *_debian_3_20_relwithdebinfo
+    debian_3_19_relwithdebinfo:
+      <<: *_debian_3_19_relwithdebinfo
 ```
 
 For C++ package management, create a `conanfile.txt` or `conanfile.py` file in addition to your `CMakeLists.txt` file.
@@ -70,7 +96,7 @@ For C++ package management, create a `conanfile.txt` or `conanfile.py` file in a
 
 To use unit testing and/or packaging, include the necessary CMake files for packaging and testing as follows:
 ```cmake
-project(demo
+project(demoDrv
   VERSION 0.1.0
 )
 # make sure to place the include commands after the project
@@ -93,21 +119,20 @@ A complete example of a `conanfile.py` can be found [here](.docs/BUILD.md#conan)
 
 #### Key Features
 
-Automatically selects the packaging format based on the target OS.
-- **Windows**: Packages are generated as ZIP files.
-- **Debian-based Linux**: Packages are generated as DEB files.
-- **Red Hat-based Linux**: Packages are generated as RPM files.
+- Automatically selects the packaging format based on the target OS.
+  - **Windows**: Packages are generated as ZIP files.
+  - **Debian-based Linux**: Packages are generated as DEB files.
+  - **Red Hat-based Linux**: Packages are generated as RPM files.
+- Configures the `CPACK_PACKAGING_INSTALL_PREFIX` to ensure correct installation paths, with special handling for WinCC OA environments on Linux.
 
 #### Customization
 
 Besides the mentioned [Key Features](#key-features) CPack standard settings are used.
 
 It is recommended to set `CPACK_PACKAGE_CONTACT`, otherwise it is automatically set to `undefined`.
-
-For Linux it is recommended to set the `CPACK_PACKAGING_INSTALL_PREFIX` to whatever is desired. For example:
+For example:
 ```cmake
 set(CPACK_PACKAGE_CONTACT "Your name or company")
-set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local/bin/")
 ```
 
 For further customization, such as including additional files in the package or changing package metadata, see the [CPack documentation](https://cmake.org/cmake/help/latest/module/CPack.html).
@@ -131,11 +156,11 @@ The basic syntax is:
    - `TEST_SOURCES`: The source files for your test.
 
 3. **Example**:
-For a hypothetical binary named `demo` that tests the functionality in `demoLib`, you might write:
+For a hypothetical binary named `demoDrv` that tests the functionality in `demoDrvLib`, you might write:
 
    ```cmake
-   set(TEST_SOURCES demoTest.cxx)
-   add_gtest_with_xml(demo demoLib ${TEST_SOURCES})
+   set(TEST_SOURCES demoDrvTest.cxx)
+   add_gtest_with_xml(demoDrv demoDrvLib ${TEST_SOURCES})
    ```
 
 4. **Integration with CMakeLists.txt**:
@@ -162,16 +187,6 @@ When the build is run, certain directories are automatically set:
 
 **Note:** The automation looks in these paths for the build artifacts, such as test results or generated binaries.
 If you make changes, make sure these directories are still set correctly by the automation.
-
-#### Docker Login
-
-If you are using private container images, uncomment the following lines in `build.yml` and provide the referenced secrets.
-
-```yaml
-      # credentials:
-      #   username: ${{ secrets.DOCKERHUB_USER}}
-      #   password: ${{ secrets.DOCKERHUB_PASSWORD}}
-```
 
 ## Local Build Environment Setup
 
