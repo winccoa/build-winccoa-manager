@@ -1,56 +1,62 @@
-_win_msvc2022vc142: &_win_msvc2022vc142
+_win_3_19: &_win_3_19
   platform: 'win'
-  version: 'msvc2022vc142'
+  version: '3.19'
   github_runs_on: 'windows-2022'
   azure_vmImage: 'windows-2022'
   init_compiler: '"C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64 -vcvars_ver=14.2'
+  msi_download_server: "https://jcr.grub3r.io/artifactory"
+  msi_download_info: "winccoa/3.19.9.1"
 
-_win_msvc2022vc143: &_win_msvc2022vc143
+_win_3_20: &_win_3_20
   platform: 'win'
-  version: 'msvc2022vc143'
+  version: '3.20'
   github_runs_on: 'windows-2022'
   azure_vmImage: 'windows-2022'
   init_compiler: '"C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64 -vcvars_ver=14.3'
+  msi_download_server: "https://jcr.grub3r.io/artifactory"
+  msi_download_info: "winccoa/3.20.0"
 
-_win_msvc2022vc142_debug: &_win_msvc2022vc142_debug
-  <<: *_win_msvc2022vc142
+_win_3_19_debug: &_win_3_19_debug
+  <<: *_win_3_19
   buildtype: 'Debug'
 
-_win_msvc2022vc142_release: &_win_msvc2022vc142_release
-  <<: *_win_msvc2022vc142
+_win_3_19_release: &_win_3_19_release
+  <<: *_win_3_19
   buildtype: 'Release'
 
-_win_msvc2022vc142_relwithdebinfo: &_win_msvc2022vc142_relwithdebinfo
-  <<: *_win_msvc2022vc142
+_win_3_19_relwithdebinfo: &_win_3_19_relwithdebinfo
+  <<: *_win_3_19
   buildtype: 'RelWithDebInfo'
 
-_win_msvc2022vc143_debug: &_win_msvc2022vc143_debug
-  <<: *_win_msvc2022vc143
+_win_3_20_debug: &_win_3_20_debug
+  <<: *_win_3_20
   buildtype: 'Debug'
 
-_win_msvc2022vc143_release: &_win_msvc2022vc143_release
-  <<: *_win_msvc2022vc143
+_win_3_20_release: &_win_3_20_release
+  <<: *_win_3_20
   buildtype: 'Release'
 
-_win_msvc2022vc143_relwithdebinfo: &_win_msvc2022vc143_relwithdebinfo
-  <<: *_win_msvc2022vc143
+_win_3_20_relwithdebinfo: &_win_3_20_relwithdebinfo
+  <<: *_win_3_20
   buildtype: 'RelWithDebInfo'
 
-_debian_bookworm: &_debian_bookworm
+_debian_3_20: &_debian_3_20
   platform: 'debian'
-  container_image: 'andygruber/cpp-multi-builder:debian-bookworm'
+  version: '3.20'
+  container_image: 'agruberetm/winccoa:v3.20.0-api'
   github_runs_on: 'ubuntu-latest'
 
-_debian_bullseye: &_debian_bullseye
+_debian_3_19: &_debian_3_19
   platform: 'debian'
-  container_image: 'andygruber/cpp-multi-builder:debian-bullseye'
+  version: '3.19'
+  container_image: 'agruberetm/winccoa:v3.19.9.1-api'
   github_runs_on: 'ubuntu-latest'
 
-_debian_bookworm_relwithdebinfo: &_debian_bookworm_relwithdebinfo
-  <<: *_debian_bookworm
+_debian_3_20_relwithdebinfo: &_debian_3_20_relwithdebinfo
+  <<: *_debian_3_20
   buildtype: 'RelWithDebInfo'
 
-_debian_bullseye_relwithdebinfo: &_debian_bullseye_relwithdebinfo
-  <<: *_debian_bullseye
+_debian_3_19_relwithdebinfo: &_debian_3_19_relwithdebinfo
+  <<: *_debian_3_19
   buildtype: 'RelWithDebInfo'
   
