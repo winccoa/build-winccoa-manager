@@ -12,7 +12,7 @@ _win_3_20: &_win_3_20
   version: '3.20'
   github_runs_on: 'windows-2022'
   azure_vmImage: 'windows-2022'
-  init_compiler: '"C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64 -vcvars_ver=14.3'
+  init_compiler: '"C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64 -vcvars_ver=14.4'
   msi_download_server: "https://jcr.grub3r.io/artifactory"
   msi_download_info: "winccoa/3.20.0"
 
